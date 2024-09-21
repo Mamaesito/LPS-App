@@ -1,23 +1,91 @@
-﻿@page "/map"
+@page "/map"
 @inject IJSRuntime JSRuntime
 
-<MudPaper Class="d-flex flex-column" Style="height: 100vh;">
-    <MudPaper Class="position-relative" Style="flex: 1;">
-        <div id="myMap" style="width: 100%; height: 100%;"></div>
-    </MudPaper>
-</MudPaper>
+<MudDrawerContainer>
+    <!-- Drawer desde arriba -->
+    <MudDrawer @bind-Open="_isDrawerOpen" ClipMode="DrawerClipMode.Always" Anchor="Anchor.Start" Elevation="24" Style="background-color: rgba(21,38,53,1); color: white;">
+        <MudNavMenu>
+            <MudNavLink Href="#" Icon="@Icons.Material.Filled.Settings" Style="margin-top: 20px" Match="NavLinkMatch.All">Iniciar Viaje</MudNavLink>
+            <MudNavLink Href="#" Icon="@Icons.Material.Filled.Settings" Match="NavLinkMatch.All">Finalizar Viaje</MudNavLink>
+            <MudNavLink Href="#" Icon="@Icons.Material.Filled.Settings" Match="NavLinkMatch.All">Configuración</MudNavLink>
+            <MudNavLink Href="#" Icon="@Icons.Material.Filled.Settings" Match="NavLinkMatch.All">Notificaciones</MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+
+
+    <!-- Contenido principal, incluyendo la AppBar y el Mapa -->
+    <MudMainContent>
+        <MudPaper Class="d-flex flex-column" Style="height: 100vh;">
+            <!-- Encabezado con logo y menú -->
+            <MudAppBar Style="background-color: rgba(44,62,80,1); color: white;" Elevation="24">
+                <MudContainer Class="d-flex justify-content-between align-items-center">
+                    <!-- Logo de la empresa -->
+                    <img src="Supra-Logo.png" alt="Logo" style="height: 40px; margin-right: 10px;" />
+
+                    <!-- Menú hamburguesa que abre/cierra el Drawer -->
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" OnClick="@ToggleDrawer" />
+                </MudContainer>
+            </MudAppBar>
+
+            <!-- Contenedor del mapa -->
+            <MudPaper Class="position-relative" Style="flex: 1;">
+                <div id="myMap" style="width: 100%; height: 100%;"></div>
+            </MudPaper>
+        </MudPaper>
+     
+    </MudMainContent>
+</MudDrawerContainer>
+
+
+@code {
+    private bool _isDrawerOpen = false;
+
+    private void ToggleDrawer()
+    {
+        _isDrawerOpen = !_isDrawerOpen;
+    }
+}
+
 
 @code {
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await InitializeMapAsync();
+            await InitializeMapWithCurrentLocationAsync();
         }
     }
 
-    private async Task InitializeMapAsync()
+    private async Task InitializeMapWithCurrentLocationAsync()
     {
-        await JSRuntime.InvokeVoidAsync("initMap");
+        var location = await GetCurrentLocationAsync();
+        if (location != null)
+        {
+            await JSRuntime.InvokeVoidAsync("initMap", location.Latitude, location.Longitude);
+        }
+    }
+
+    private async Task<Location> GetCurrentLocationAsync()
+    {
+        try
+        {
+            var location = await Geolocation.GetLastKnownLocationAsync();
+
+            if (location == null)
+            {
+                location = await Geolocation.GetLocationAsync(new GeolocationRequest
+                    {
+                        DesiredAccuracy = GeolocationAccuracy.High,
+                        Timeout = TimeSpan.FromSeconds(30)
+                    });
+            }
+
+            return location;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al obtener la ubicación: {ex.Message}");
+            return null;
+        }
     }
 }
